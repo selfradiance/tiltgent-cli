@@ -1,3 +1,4 @@
+import { createRequire } from 'module';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { evalCommand } from './eval.js';
@@ -6,12 +7,15 @@ import { inspectCommand } from './inspect.js';
 import { CliError } from './errors.js';
 import { sanitizeInlineText } from '../terminal-safety.js';
 
+const require = createRequire(import.meta.url);
+const pkg = require('../../../package.json') as { version: string };
+
 const program = new Command();
 
 program
   .name('tiltgent')
   .description('Evaluate AI agent judgment tilt through blind debates')
-  .version('0.1.0');
+  .version(pkg.version);
 
 program
   .command('eval')
