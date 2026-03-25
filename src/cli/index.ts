@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { evalCommand } from './eval.js';
 import { diffCommand } from './diff.js';
+import { inspectCommand } from './inspect.js';
 
 const program = new Command();
 
@@ -27,5 +28,11 @@ program
   .argument('<after>', 'Path to comparison evaluation JSON')
   .option('--out <path>', 'Save diff report as JSON file')
   .action(diffCommand);
+
+program
+  .command('inspect')
+  .description('Pretty-print a saved evaluation profile')
+  .argument('<file>', 'Path to evaluation JSON file')
+  .action(inspectCommand);
 
 program.parse();
