@@ -1,0 +1,26 @@
+{
+  "name": "tiltgent",
+  "version": "0.1.0",
+  "description": "Open-source CLI tool for evaluating AI agent judgment tilt through blind debates",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/selfradiance/tiltgent-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/selfradiance/tiltgent-cli/issues"
+  },
+  "homepage": "https://github.com/selfradiance/tiltgent-cli#readme",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

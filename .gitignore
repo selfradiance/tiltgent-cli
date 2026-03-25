@@ -1,0 +1,6 @@
+.env
+node_modules/
+dist/
+test-result.json
+*.log
+.DS_Store
