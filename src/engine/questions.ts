@@ -96,12 +96,11 @@ export async function generateSubQuestions(
 /** Validate that parsed output is an array of non-empty strings with the expected count. */
 export function validateQuestions(parsed: unknown, expectedCount: number): string[] | null {
   if (!Array.isArray(parsed)) return null;
-  if (parsed.length < expectedCount) return null;
+  if (parsed.length !== expectedCount) return null;
 
-  const questions = parsed.slice(0, expectedCount);
-  for (const q of questions) {
+  for (const q of parsed) {
     if (typeof q !== "string" || q.trim().length === 0) return null;
   }
 
-  return questions as string[];
+  return parsed as string[];
 }

@@ -10,6 +10,7 @@ import { generateSubQuestions } from "./questions.js";
 import { judgeDebate } from "./agent-judge.js";
 import { classifySession, RoundResult, SessionMetrics } from "./classifier.js";
 import { cleanJsonResponse } from "./json-utils.js";
+import { sanitizeInlineText } from "../terminal-safety.js";
 
 // ─── Types ───
 
@@ -293,6 +294,21 @@ interface AggregatedPicks {
   };
 }
 
+interface WinnerTally {
+  winnerId: number;
+  loserId: number;
+  subQuestion: string;
+  votes: number;
+  weight: number;
+  strongVotes: number;
+}
+
+function compareTallies(a: WinnerTally, b: WinnerTally): number {
+  if (a.weight !== b.weight) return a.weight - b.weight;
+  if (a.votes !== b.votes) return a.votes - b.votes;
+  return a.strongVotes - b.strongVotes;
+}
+
 function aggregateRuns(runs: RunPicks[], totalRounds: number): AggregatedPicks {
   const reliability = {
     rounds_attempted: 0,
@@ -324,11 +340,14 @@ function aggregateRuns(runs: RunPicks[], totalRounds: number): AggregatedPicks {
       if (pick !== null) roundPicks.push(pick);
     }
 
-    if (roundPicks.length === 0) continue; // all runs failed this round
+    if (roundPicks.length === 0) {
+      unstableRounds.push(i + 1);
+      continue;
+    }
 
     // Check agreement
     const winnerIds = roundPicks.map((r) => r.winnerId);
-    const allAgree = winnerIds.every((id) => id === winnerIds[0]);
+    const allAgree = roundPicks.length === runs.length && winnerIds.every((id) => id === winnerIds[0]);
 
     if (allAgree) {
       agreedCount++;
@@ -340,38 +359,49 @@ function aggregateRuns(runs: RunPicks[], totalRounds: number): AggregatedPicks {
       });
     } else {
       unstableRounds.push(i + 1);
-      // Majority vote
-      const counts = new Map<number, { count: number; pick: RoundPick }>();
+      // Weighted majority vote. Strong picks count 2x, but exact ties stay unresolved.
+      const tallies = new Map<number, WinnerTally>();
       for (const pick of roundPicks) {
-        const existing = counts.get(pick.winnerId);
-        if (existing) existing.count++;
-        else counts.set(pick.winnerId, { count: 1, pick });
-      }
-      let best = roundPicks[0];
-      let bestCount = 0;
-      for (const [, { count, pick }] of counts) {
-        // Deterministic tie-breaking: higher count wins; on tie, lower winnerId wins
-        if (count > bestCount || (count === bestCount && pick.winnerId < best.winnerId)) {
-          bestCount = count;
-          best = pick;
+        const weight = pick.confidence === "strong" ? 2 : 1;
+        const existing = tallies.get(pick.winnerId);
+        if (existing) {
+          existing.votes++;
+          existing.weight += weight;
+          if (pick.confidence === "strong") existing.strongVotes++;
+        } else {
+          tallies.set(pick.winnerId, {
+            winnerId: pick.winnerId,
+            loserId: pick.loserId,
+            subQuestion: pick.subQuestion,
+            votes: 1,
+            weight,
+            strongVotes: pick.confidence === "strong" ? 1 : 0,
+          });
         }
       }
+
+      const rankedTallies = Array.from(tallies.values()).sort((a, b) => compareTallies(b, a));
+      const best = rankedTallies[0];
+      const runnerUp = rankedTallies[1];
+      if (best === undefined) continue;
+      if (runnerUp && compareTallies(best, runnerUp) === 0) {
+        continue;
+      }
+
       consensusRounds.push({
         winnerArchetypeId: best.winnerId,
         loserArchetypeId: best.loserId,
-        confidence: best.confidence,
+        confidence: best.strongVotes > 0 ? "strong" : "slight",
         subQuestion: best.subQuestion,
       });
     }
   }
 
-  const totalWithData = agreedCount + unstableRounds.length;
-
   return {
     consensusRounds,
     stability: {
       runs_completed: runs.length,
-      pick_agreement_rate: totalWithData > 0 ? agreedCount / totalWithData : 1,
+      pick_agreement_rate: totalRounds > 0 ? agreedCount / totalRounds : 1,
       unstable_rounds: unstableRounds,
     },
     reliability,
@@ -551,7 +581,7 @@ export async function runEvaluation(
   }
 
   console.log(`\n${"═".repeat(55)}`);
-  console.log(`  EVAL: "${topic}"`);
+  console.log(`  EVAL: "${sanitizeInlineText(topic)}"`);
   console.log(`  ${runs} runs × ${rounds} rounds, temp=${temperature}`);
   console.log(`${"═".repeat(55)}`);
 
@@ -610,8 +640,8 @@ export async function runEvaluation(
   // Step 7: Generate reveal
   console.log(`\n  Step 7: Generating eval reveal...`);
   const reveal = await generateEvalReveal(client, model, topic, aggregated.consensusRounds, metrics);
-  console.log(`    Archetype: ${reveal.archetype_name}`);
-  console.log(`    Contradiction: ${reveal.contradiction_line}`);
+  console.log(`    Archetype: ${sanitizeInlineText(reveal.archetype_name)}`);
+  console.log(`    Contradiction: ${sanitizeInlineText(reveal.contradiction_line)}`);
 
   // Step 6: Calibrate
   const rawDimsArr = dimsToArray(reveal.dimensions);

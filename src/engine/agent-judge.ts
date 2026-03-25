@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { sanitizeInlineText } from "../terminal-safety.js";
 
 // ─── Types ───
 
@@ -223,7 +224,7 @@ Pick "strong" if one argument clearly resonates more. Pick "slight" if it's clos
 
       if (parsed) {
         if (parsed.layer > 1) {
-          console.warn(`      ⚠ Parsed via layer ${parsed.layer} (attempt ${attempt + 1}): ${rawText.slice(0, 80)}...`);
+          console.warn(`      ⚠ Parsed via layer ${parsed.layer} (attempt ${attempt + 1}): ${sanitizeInlineText(rawText).slice(0, 80)}...`);
         }
         return {
           success: true,
@@ -245,7 +246,7 @@ Pick "strong" if one argument clearly resonates more. Pick "slight" if it's clos
     } catch (err) {
       // API error — will retry if attempts remain
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn(`      ⚠ API error (attempt ${attempt + 1}/${totalAttempts}): ${errMsg}`);
+      console.warn(`      ⚠ API error (attempt ${attempt + 1}/${totalAttempts}): ${sanitizeInlineText(errMsg)}`);
       if (attempt < totalAttempts - 1) {
         await new Promise((r) => setTimeout(r, 1000));
       }

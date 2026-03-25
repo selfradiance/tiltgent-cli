@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import type { EvalProfile } from '../engine/eval-pipeline.js';
 import type { DiffReport, Significance } from './diff.js';
+import { sanitizeInlineText, sanitizeTerminalText } from '../terminal-safety.js';
 
 const amber = chalk.hex('#F59E0B');
 const dimText = chalk.dim;
@@ -69,21 +70,29 @@ function wrapText(text: string, indent: number = 2, width: number = LINE_WIDTH -
 
 export function formatTerminalOutput(result: EvalProfile): void {
   const output: string[] = [];
+  const topic = sanitizeInlineText(result.metadata.topic);
+  const archetypeName = sanitizeInlineText(result.archetype_name);
+  const contradictionLine = sanitizeTerminalText(result.contradiction_line);
+  const howYouDecide = sanitizeTerminalText(result.how_you_decide);
+  const whatWinsYouOver = sanitizeTerminalText(result.what_wins_you_over);
+  const whatYouResist = sanitizeTerminalText(result.what_you_resist);
+  const patternReceipt = sanitizeTerminalText(result.pattern_receipt);
+  const agentPromptSnippet = sanitizeTerminalText(result.agent_prompt_snippet);
 
   // Header
   output.push('');
   output.push(amber(hr()));
   output.push(amber('  TILTGENT -- Judgment Tilt Profile'));
-  output.push(amber(`  Topic: ${result.metadata.topic}`));
+  output.push(amber(`  Topic: ${topic}`));
   output.push(amber(hr()));
 
   // Archetype name
   output.push('');
-  output.push(`  ${amber(result.archetype_name)}`);
+  output.push(`  ${amber(archetypeName)}`);
 
   // Contradiction line
   output.push('');
-  output.push(wrapText(chalk.italic(`"${result.contradiction_line}"`)));
+  output.push(wrapText(chalk.italic(`"${contradictionLine}"`)));
 
   // Dimensions
   output.push(sectionHeader('Dimensional Profile'));
@@ -102,19 +111,19 @@ export function formatTerminalOutput(result: EvalProfile): void {
 
   // Interpretive sections
   output.push(sectionHeader('How It Decides'));
-  output.push(wrapText(result.how_you_decide));
+  output.push(wrapText(howYouDecide));
 
   output.push(sectionHeader('What Wins It Over'));
-  output.push(wrapText(result.what_wins_you_over));
+  output.push(wrapText(whatWinsYouOver));
 
   output.push(sectionHeader('What It Resists'));
-  output.push(wrapText(result.what_you_resist));
+  output.push(wrapText(whatYouResist));
 
   output.push(sectionHeader('Pattern Receipt'));
-  output.push(wrapText(result.pattern_receipt));
+  output.push(wrapText(patternReceipt));
 
   output.push(sectionHeader('Diagnostic Prompt Snippet'));
-  output.push(wrapText(result.agent_prompt_snippet));
+  output.push(wrapText(agentPromptSnippet));
 
   // Metadata
   output.push(sectionHeader('Run Metadata'));
@@ -126,14 +135,14 @@ export function formatTerminalOutput(result: EvalProfile): void {
   const l1Pct = totalParsed > 0 ? ((totalL.layer1 / totalParsed) * 100).toFixed(0) : '0';
 
   const meta = [
-    ['Model', result.metadata.model],
+    ['Model', sanitizeInlineText(result.metadata.model)],
     ['Rounds', String(result.metadata.rounds)],
     ['Runs', String(result.metadata.runs)],
     ['Pick agreement', `${agreementPct}%`],
     ['Unstable rounds', `${unstableCount}/${result.metadata.rounds}`],
     ['Parse reliability', `Layer 1 ${l1Pct}%`],
     ['Session mode', result.session_mode.toUpperCase()],
-    ['Timestamp', result.metadata.timestamp],
+    ['Timestamp', sanitizeInlineText(result.metadata.timestamp)],
   ];
 
   for (const [key, val] of meta) {
@@ -179,6 +188,14 @@ function formatScore(value: number): string {
 
 export function formatDiffOutput(report: DiffReport): void {
   const output: string[] = [];
+  const beforeFile = sanitizeInlineText(report.beforeFile);
+  const afterFile = sanitizeInlineText(report.afterFile);
+  const beforeTopic = sanitizeInlineText(report.beforeTopic);
+  const afterTopic = sanitizeInlineText(report.afterTopic);
+  const archetypeBefore = sanitizeInlineText(report.archetypeBefore);
+  const archetypeAfter = sanitizeInlineText(report.archetypeAfter);
+  const contradictionBefore = sanitizeTerminalText(report.contradictionBefore);
+  const contradictionAfter = sanitizeTerminalText(report.contradictionAfter);
 
   // Header
   output.push('');
@@ -187,21 +204,21 @@ export function formatDiffOutput(report: DiffReport): void {
   output.push(amber(hr()));
 
   output.push('');
-  output.push(`  ${dimText('Before:')} ${report.beforeFile}`);
-  output.push(`  ${dimText('After: ')} ${report.afterFile}`);
-  if (report.beforeTopic === report.afterTopic) {
-    output.push(`  ${dimText('Topic: ')} ${report.beforeTopic}`);
+  output.push(`  ${dimText('Before:')} ${beforeFile}`);
+  output.push(`  ${dimText('After: ')} ${afterFile}`);
+  if (beforeTopic === afterTopic) {
+    output.push(`  ${dimText('Topic: ')} ${beforeTopic}`);
   } else {
-    output.push(`  ${dimText('Topics:')} ${report.beforeTopic} / ${report.afterTopic}`);
+    output.push(`  ${dimText('Topics:')} ${beforeTopic} / ${afterTopic}`);
   }
 
   // Archetype
   output.push(sectionHeader('Archetype'));
   if (report.archetypeChanged) {
-    output.push(`  ${report.archetypeBefore}  ${chalk.yellow('->')}  ${report.archetypeAfter}`);
+    output.push(`  ${archetypeBefore}  ${chalk.yellow('->')}  ${archetypeAfter}`);
     output.push(chalk.yellow('  Archetype shifted'));
   } else {
-    output.push(`  ${report.archetypeBefore}`);
+    output.push(`  ${archetypeBefore}`);
     output.push(dimText('  No change'));
   }
 
@@ -224,11 +241,11 @@ export function formatDiffOutput(report: DiffReport): void {
   // Contradiction lines
   output.push(sectionHeader('Contradiction Lines'));
   if (report.contradictionChanged) {
-    output.push(`  ${dimText('Before:')} ${chalk.italic(`"${report.contradictionBefore}"`)}`);
+    output.push(`  ${dimText('Before:')} ${chalk.italic(`"${contradictionBefore}"`)}`);
     output.push('');
-    output.push(`  ${dimText('After: ')} ${chalk.italic(`"${report.contradictionAfter}"`)}`);
+    output.push(`  ${dimText('After: ')} ${chalk.italic(`"${contradictionAfter}"`)}`);
   } else {
-    output.push(wrapText(chalk.italic(`"${report.contradictionBefore}"`)));
+    output.push(wrapText(chalk.italic(`"${contradictionBefore}"`)));
     output.push(dimText('  No change'));
   }
 

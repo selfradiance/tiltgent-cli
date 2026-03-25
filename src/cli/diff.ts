@@ -3,6 +3,9 @@ import path from 'path';
 import chalk from 'chalk';
 import type { EvalProfile } from '../engine/eval-pipeline.js';
 import { formatDiffOutput } from './format.js';
+import { validateEvalProfile } from './profile-validation.js';
+import { sanitizeInlineText } from '../terminal-safety.js';
+import { CliError } from './errors.js';
 
 // ─── Significance thresholds for dimension shifts ───
 // These are initial values based on the engine's validated output.
@@ -94,23 +97,6 @@ function stabilitySnapshot(profile: EvalProfile): StabilitySnapshot {
   };
 }
 
-function validateProfile(data: unknown, filename: string): EvalProfile | null {
-  if (typeof data !== 'object' || data === null) return null;
-  const d = data as Record<string, unknown>;
-
-  // Minimum required fields
-  if (typeof d.archetype_name !== 'string') return null;
-  if (typeof d.contradiction_line !== 'string') return null;
-  if (typeof d.dimensions !== 'object' || d.dimensions === null) return null;
-
-  const dims = d.dimensions as Record<string, unknown>;
-  for (const axis of DIMENSION_AXES) {
-    if (typeof dims[axis.key] !== 'number') return null;
-  }
-
-  return data as EvalProfile;
-}
-
 // ─── Compute diff ───
 
 function computeDiff(before: EvalProfile, after: EvalProfile, beforeFile: string, afterFile: string): DiffReport {
@@ -169,12 +155,10 @@ export async function diffCommand(beforePath: string, afterPath: string, options
   const resolvedAfter = path.resolve(afterPath);
 
   if (!fs.existsSync(resolvedBefore)) {
-    console.error(chalk.red(`Error: File not found: ${beforePath}`));
-    process.exit(1);
+    throw new CliError(`File not found: ${sanitizeInlineText(beforePath)}`);
   }
   if (!fs.existsSync(resolvedAfter)) {
-    console.error(chalk.red(`Error: File not found: ${afterPath}`));
-    process.exit(1);
+    throw new CliError(`File not found: ${sanitizeInlineText(afterPath)}`);
   }
 
   // 2. Parse JSON
@@ -184,33 +168,30 @@ export async function diffCommand(beforePath: string, afterPath: string, options
   try {
     beforeRaw = JSON.parse(fs.readFileSync(resolvedBefore, 'utf-8'));
   } catch {
-    console.error(chalk.red(`Error: Could not parse ${beforePath} as valid JSON.`));
-    process.exit(1);
+    throw new CliError(`Could not parse ${sanitizeInlineText(beforePath)} as valid JSON.`);
   }
 
   try {
     afterRaw = JSON.parse(fs.readFileSync(resolvedAfter, 'utf-8'));
   } catch {
-    console.error(chalk.red(`Error: Could not parse ${afterPath} as valid JSON.`));
-    process.exit(1);
+    throw new CliError(`Could not parse ${sanitizeInlineText(afterPath)} as valid JSON.`);
   }
 
   // 3. Validate profiles
-  const before = validateProfile(beforeRaw, beforePath);
-  if (!before) {
-    console.error(chalk.red(`Error: Could not parse ${beforePath} as a valid Tiltgent profile.`));
-    process.exit(1);
+  if (!validateEvalProfile(beforeRaw)) {
+    throw new CliError(`Could not parse ${sanitizeInlineText(beforePath)} as a valid Tiltgent profile.`);
   }
 
-  const after = validateProfile(afterRaw, afterPath);
-  if (!after) {
-    console.error(chalk.red(`Error: Could not parse ${afterPath} as a valid Tiltgent profile.`));
-    process.exit(1);
+  if (!validateEvalProfile(afterRaw)) {
+    throw new CliError(`Could not parse ${sanitizeInlineText(afterPath)} as a valid Tiltgent profile.`);
   }
+
+  const before = beforeRaw as EvalProfile;
+  const after = afterRaw as EvalProfile;
 
   // 4. Warn on different topics
   if (before.metadata?.topic && after.metadata?.topic && before.metadata.topic !== after.metadata.topic) {
-    console.log(chalk.yellow(`\n  Note: These profiles are from different topics (${before.metadata.topic} vs. ${after.metadata.topic}). Cross-topic comparison is valid but dimensions may not be directly comparable.\n`));
+    console.log(chalk.yellow(`\n  Note: These profiles are from different topics (${sanitizeInlineText(before.metadata.topic)} vs. ${sanitizeInlineText(after.metadata.topic)}). Cross-topic comparison is valid but dimensions may not be directly comparable.\n`));
   }
 
   // 5. Compute diff
@@ -227,7 +208,7 @@ export async function diffCommand(beforePath: string, afterPath: string, options
       fs.mkdirSync(outputDir, { recursive: true });
     }
     fs.writeFileSync(outputPath, JSON.stringify(report, null, 2));
-    console.log(chalk.green(`  Diff report saved to ${options.out}`));
+    console.log(chalk.green(`  Diff report saved to ${sanitizeInlineText(options.out)}`));
     console.log('');
   }
 }

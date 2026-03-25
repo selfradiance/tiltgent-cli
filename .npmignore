@@ -1,0 +1,23 @@
+# Source code (dist/ is the published artifact)
+src/
+bin/
+
+# Config and tooling
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# Documentation and briefings
+*.md
+!README.md
+
+# Environment and secrets
+.env*
+
+# Development
+node_modules/
+.DS_Store
+
+# Git
+.git/
+.gitignore
