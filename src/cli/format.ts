@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { EvalProfile } from '../engine/eval-pipeline.js';
+import type { DiffReport, Significance } from './diff.js';
 
 const amber = chalk.hex('#F59E0B');
 const dimText = chalk.dim;
@@ -141,6 +142,125 @@ export function formatTerminalOutput(result: EvalProfile): void {
 
   // Footer
   output.push('');
+  output.push(amber(hr()));
+  output.push('');
+
+  console.log(output.join('\n'));
+}
+
+// ─── Diff output formatting ───
+
+function significanceMarker(sig: Significance, direction: string): string {
+  switch (sig) {
+    case 'major':
+      return chalk.red(`  MAJOR shift ${direction}`);
+    case 'significant':
+      return chalk.yellow(`  Significant shift ${direction}`);
+    case 'notable':
+      return chalk.cyan(`  Notable shift ${direction}`);
+    case 'none':
+      return dimText('  No significant change');
+  }
+}
+
+function formatDelta(delta: number): string {
+  const sign = delta >= 0 ? '+' : '';
+  const str = `${sign}${delta.toFixed(2)}`;
+  if (Math.abs(delta) >= 0.5) return chalk.red(str);
+  if (Math.abs(delta) >= 0.3) return chalk.yellow(str);
+  if (Math.abs(delta) >= 0.15) return chalk.cyan(str);
+  return dimText(str);
+}
+
+function formatScore(value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}`;
+}
+
+export function formatDiffOutput(report: DiffReport): void {
+  const output: string[] = [];
+
+  // Header
+  output.push('');
+  output.push(amber(hr()));
+  output.push(amber('  TILTGENT -- Profile Diff'));
+  output.push(amber(hr()));
+
+  output.push('');
+  output.push(`  ${dimText('Before:')} ${report.beforeFile}`);
+  output.push(`  ${dimText('After: ')} ${report.afterFile}`);
+  if (report.beforeTopic === report.afterTopic) {
+    output.push(`  ${dimText('Topic: ')} ${report.beforeTopic}`);
+  } else {
+    output.push(`  ${dimText('Topics:')} ${report.beforeTopic} / ${report.afterTopic}`);
+  }
+
+  // Archetype
+  output.push(sectionHeader('Archetype'));
+  if (report.archetypeChanged) {
+    output.push(`  ${report.archetypeBefore}  ${chalk.yellow('->')}  ${report.archetypeAfter}`);
+    output.push(chalk.yellow('  Archetype shifted'));
+  } else {
+    output.push(`  ${report.archetypeBefore}`);
+    output.push(dimText('  No change'));
+  }
+
+  // Dimensional drift
+  output.push(sectionHeader('Dimensional Drift'));
+
+  for (const dim of report.dimensions) {
+    output.push('');
+    output.push(`  ${dim.name}`);
+    output.push(`    Before: ${formatScore(dim.before).padEnd(8)} After: ${formatScore(dim.after).padEnd(8)} Delta: ${formatDelta(dim.delta)}`);
+    output.push(`  ${significanceMarker(dim.significance, dim.direction)}`);
+  }
+
+  output.push('');
+  const driftColor = report.totalAbsoluteDrift > 2.0 ? chalk.red
+    : report.totalAbsoluteDrift < 0.5 ? chalk.green
+    : chalk.yellow;
+  output.push(`  Total absolute drift: ${driftColor(report.totalAbsoluteDrift.toFixed(2))}`);
+
+  // Contradiction lines
+  output.push(sectionHeader('Contradiction Lines'));
+  if (report.contradictionChanged) {
+    output.push(`  ${dimText('Before:')} ${chalk.italic(`"${report.contradictionBefore}"`)}`);
+    output.push('');
+    output.push(`  ${dimText('After: ')} ${chalk.italic(`"${report.contradictionAfter}"`)}`);
+  } else {
+    output.push(wrapText(chalk.italic(`"${report.contradictionBefore}"`)));
+    output.push(dimText('  No change'));
+  }
+
+  // Session mode
+  output.push(sectionHeader('Session Mode'));
+  if (report.sessionModeChanged) {
+    output.push(`  ${report.sessionModeBefore.toUpperCase()} ${chalk.yellow('->')} ${report.sessionModeAfter.toUpperCase()}`);
+  } else {
+    output.push(`  ${report.sessionModeBefore.toUpperCase()} (no change)`);
+  }
+
+  // Stability
+  output.push(sectionHeader('Stability'));
+  const bStab = report.stabilityBefore;
+  const aStab = report.stabilityAfter;
+  output.push(`  ${dimText('Pick agreement: '.padEnd(20))} ${(bStab.pickAgreement * 100).toFixed(0)}% -> ${(aStab.pickAgreement * 100).toFixed(0)}%`);
+  output.push(`  ${dimText('Unstable rounds:'.padEnd(20))} ${bStab.unstableRounds}/${bStab.totalRounds} -> ${aStab.unstableRounds}/${aStab.totalRounds}`);
+  output.push(`  ${dimText('Parse reliability:'.padEnd(20))} ${bStab.parseReliability} -> ${aStab.parseReliability}`);
+
+  // Footer summary
+  const counts = { none: 0, notable: 0, significant: 0, major: 0 };
+  for (const dim of report.dimensions) counts[dim.significance]++;
+
+  const parts: string[] = [];
+  if (counts.major > 0) parts.push(`${counts.major} major`);
+  if (counts.significant > 0) parts.push(`${counts.significant} significant`);
+  if (counts.notable > 0) parts.push(`${counts.notable} notable`);
+  if (counts.none > 0) parts.push(`${counts.none} no change`);
+
+  output.push('');
+  output.push(amber(hr()));
+  output.push(`  Drift summary: ${parts.join(', ')}`);
   output.push(amber(hr()));
   output.push('');
 

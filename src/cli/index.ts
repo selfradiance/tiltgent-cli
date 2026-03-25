@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { evalCommand } from './eval.js';
+import { diffCommand } from './diff.js';
 
 const program = new Command();
 
@@ -18,5 +19,13 @@ program
   .option('--out <path>', 'Output path for the JSON result file')
   .option('--api-key <key>', 'Anthropic API key (defaults to ANTHROPIC_API_KEY env var)')
   .action(evalCommand);
+
+program
+  .command('diff')
+  .description('Compare two evaluation profiles and show what shifted')
+  .argument('<before>', 'Path to baseline evaluation JSON')
+  .argument('<after>', 'Path to comparison evaluation JSON')
+  .option('--out <path>', 'Save diff report as JSON file')
+  .action(diffCommand);
 
 program.parse();
