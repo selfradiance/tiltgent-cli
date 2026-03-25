@@ -20,6 +20,25 @@
     "url": "https://github.com/selfradiance/tiltgent-cli/issues"
   },
   "homepage": "https://github.com/selfradiance/tiltgent-cli#readme",
+  "files": [
+    "dist/**/*"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "evaluation",
+    "bias",
+    "judgment",
+    "tilt",
+    "cli",
+    "anthropic",
+    "claude",
+    "blind-debate",
+    "prompt-regression"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@types/node": "^25.5.0",
