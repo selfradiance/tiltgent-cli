@@ -1,4 +1,4 @@
-import { ARCHETYPES, Archetype, euclideanDistance } from "./archetypes";
+import { ARCHETYPES, Archetype, euclideanDistance } from "./archetypes.js";
 
 export interface ArchetypePair {
   a: Archetype;

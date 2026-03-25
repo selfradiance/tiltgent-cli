@@ -4,12 +4,12 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { getArchetypeById, evalPrompt, Archetype } from "./archetypes";
-import { generateSessionPairings, ArchetypePair } from "./pairing";
-import { generateSubQuestions } from "./questions";
-import { judgeDebate } from "./agent-judge";
-import { classifySession, RoundResult, SessionMetrics } from "./classifier";
-import { cleanJsonResponse } from "./json-utils";
+import { getArchetypeById, evalPrompt, Archetype } from "./archetypes.js";
+import { generateSessionPairings, ArchetypePair } from "./pairing.js";
+import { generateSubQuestions } from "./questions.js";
+import { judgeDebate } from "./agent-judge.js";
+import { classifySession, RoundResult, SessionMetrics } from "./classifier.js";
+import { cleanJsonResponse } from "./json-utils.js";
 
 // ─── Types ───
 

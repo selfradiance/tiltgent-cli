@@ -1,4 +1,4 @@
-import { getArchetypeById } from "./archetypes";
+import { getArchetypeById } from "./archetypes.js";
 
 export type SessionMode = "locked" | "split" | "open";
 export type Confidence = "strong" | "slight";

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { cleanJsonResponse } from "./json-utils";
+import { cleanJsonResponse } from "./json-utils.js";
 
 /** System prompt for generating 5 sub-questions (human game format). */
 const QUESTIONS_5_SYSTEM = `You generate sub-questions for a blind debate game about civilizational topics. Given a user's topic, produce exactly 5 debate sub-questions that escalate in specificity:
